@@ -1,0 +1,49 @@
+{
+    "name": "PaddleX Dev Env",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.analysis.extraPaths": ["/workspace/PaddleX"],
+                "terminal.integrated.defaultProfile.linux": "bash"
+            },
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-toolsai.jupyter"
+            ]
+        }
+    },
+
+    // 将工作区挂载到容器的 /workspace
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+    "workspaceFolder": "/workspace",
+
+    // 参考 PaddleX 官方文档的 Docker 运行参数
+    // --shm-size=8g: 防止深度学习训练时共享内存溢出 (Bus error)
+    // --network=host: 使用宿主机网络栈 (可选，视网络情况而定)
+    "runArgs": [
+        "--shm-size=8g",
+        "--network=host"
+    ],
+
+    // 创建后执行的命令：安装当前项目的依赖
+    // 注意：这里假设 PaddleX 源码在 workspace 根目录下或 workspace/PaddleX
+    "postCreateCommand": "cd PaddleX && uv pip install --system -e . && paddlex --install PaddleOCR PaddleClas",
+
+    // 允许容器使用宿主机的 git凭据
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {}
+    },
+
+    // 端口转发 (如果需要启动可视化服务如 VisualDL)
+    "forwardPorts": [8040, 8000],
+
+    // 连接后以 root 用户运行
+    "remoteUser": "root"
+}
