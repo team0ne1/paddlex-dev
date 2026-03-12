@@ -1,14 +1,94 @@
-# Python-generated files
+# =========================
+# 1. Python 编译与缓存文件
+# =========================
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Virtual environments
+# =========================
+# 2. 虚拟环境 (防患于未然)
+# =========================
+# 即使你目前使用的是容器全局环境，保留这些规则可以防止别人或者你未来在宿主机创建的虚拟环境被意外提交
+.env
 .venv
+env/
+venv/
+ENV/
 
-# Datasets and outputs
-output*/
-dataset/
+# =========================
+# 3. 依赖包与构建目录
+# =========================
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# =========================
+# 4. VS Code 本地配置
+# =========================
+# 忽略个人的工作区状态，但通常保留 settings.json 供团队共享（按需调整）
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# =========================
+# 5. 深度学习与视觉项目专属 (PaddleX 相关)
+# =========================
+# 忽略数据集和输出的预测结果
+data/
+datasets/
+output/
+inference/
+runs/
+PaddleX/
+*.tar
+text_image_orientation.tar
+
+# 忽略模型权重文件 (包含常规与 PaddlePaddle 专属格式)
+*.pth
+*.pt
+*.onnx
+*.h5
+*.pdparams
+*.pdopt
+*.pdmodel
+*.pdiparams
+*.pdiparams.info
+
+# 忽略大型多媒体文件
+*.mp4
+*.avi
+*.mkv
+*.jpg
+*.jpeg
+*.png
+*.bmp
+
+# =========================
+# 6. 操作系统生成文件
+# =========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+ehthumbs_vista.db
+[Tt]humbs.db
