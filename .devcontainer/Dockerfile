@@ -28,14 +28,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 \
     && rm -rf /var/lib/apt/lists/*
 
+# 重装基础镜像中由 distutils 安装的包，避免后续 pip 无法卸载的冲突
+RUN python3.10 -m pip install --ignore-installed --no-cache-dir PyYAML
+
 # 预先安装核心依赖 (利用缓存层)
-# 直接指定 python3.10 调用 pip
+COPY requirements.txt /tmp/requirements.txt
 RUN python3.10 -m pip install --no-cache-dir --default-timeout=1000 \
-    "numpy>=1.24" \
-    "pandas>=1.3" \
-    "opencv-contrib-python==4.10.0.84" \
-    "matplotlib" \
-    "colorlog" 
+    -r /tmp/requirements.txt
 
 # 设置环境变量
 # 使用变量扩展语法，防止 PYTHONPATH 未定义时产生前导冒号或报错

@@ -33,9 +33,13 @@
 
     // 参考 PaddleX 官方文档的 Docker 运行参数
     "runArgs": [
-        "--shm-size=8g",
-        "--network=host"
+        "--gpus", "all",
+        "--shm-size=8g"
     ],
+
+    "hostRequirements": {
+        "gpu": true
+    },
 
     "mounts": [
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/tmp/host-gitconfig,type=bind,readonly"
