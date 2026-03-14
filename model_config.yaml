@@ -17,11 +17,11 @@ CheckDataset:
 
 Train:
   num_classes: 4
-  epochs_iters: 5 # 50 is recommended
+  epochs_iters: 50 # 50 is recommended
   batch_size: 16
   learning_rate: 0.005
   pretrain_weight_path: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-LCNet_x1_0_doc_ori_pretrained.pdparams
-  warmup_steps: 1 # 5 is recommended
+  warmup_steps: 5 # 5 is recommended
   resume_path: null
   log_interval: 10
   eval_interval: 1

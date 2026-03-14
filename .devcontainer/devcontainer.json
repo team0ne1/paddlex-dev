@@ -5,9 +5,9 @@
         "context": "..",
         "args": {
             // 这里利用 host.docker.internal 指向宿主机的代理端口
-            "HTTP_PROXY": "http://host.docker.internal:20884",
-            "HTTPS_PROXY": "http://host.docker.internal:20884",
-            "NO_PROXY": "localhost,127.0.0.1"
+            // "HTTP_PROXY": "http://host.docker.internal:20884",
+            // "HTTPS_PROXY": "http://host.docker.internal:20884",
+            // "NO_PROXY": "localhost,127.0.0.1"
         }
     },
     
@@ -22,7 +22,8 @@
                 "ms-python.python",
                 "ms-python.vscode-pylance",
                 "GitHub.copilot",
-                "GitHub.copilot-chat"
+                "GitHub.copilot-chat",
+                "formulahendry.acp-client"
             ]
         }
     },
@@ -46,22 +47,24 @@
     ],
 
     // 创建后执行的命令：直接指定 python3.10 安装当前项目的依赖
-    "postCreateCommand": "bash .devcontainer/setup-git.sh && cd PaddleX && python3.10 -m pip install -e . && paddlex --install PaddleOCR PaddleClas",
+    "postCreateCommand": "npm install -g openclaw && bash .devcontainer/setup-git.sh && cd PaddleX && python3.10 -m pip install -e '.[base]' && paddlex --install PaddleOCR PaddleClas",
 
     // 引入官方 Git Feature，VS Code 会自动注入凭据助手 (GIT_ASKPASS) 实现凭据转发
     "features": {
-        "ghcr.io/devcontainers/features/git:1": {}
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "22",
+            "nodeGypDependencies": true
+        }
     },
 
     // 端口转发
-    "forwardPorts": [8040, 8000],
+    "forwardPorts": [8040, 8000, 18789],
 
     // 连接后以 root 用户运行
     "remoteUser": "root",
 
     "containerEnv": {
-      "http_proxy": "http://host.docker.internal:20884",
-      "https_proxy": "http://host.docker.internal:20884",
-      "all_proxy": "http://host.docker.internal:20884" 
-  }
+      "OPENCLAW_ALLOW_INSECURE_PRIVATE_WS": "1"
+    }
 }

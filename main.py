@@ -21,6 +21,7 @@ VAL_TXT             = "./dataset/text_image_orientation/val.txt"
 DATASET_DIR         = "./dataset/text_image_orientation"
 CONFIG              = "model_config.yaml"
 OUTPUT_DIR          = "./output"
+RESUME_PATH         = f"{OUTPUT_DIR}/latest/latest.pdparams"
 BEST_WEIGHT         = f"{OUTPUT_DIR}/best_model/best_model.pdparams"
 INFERENCE_DIR       = f"{OUTPUT_DIR}/best_model/inference"
 PADDLEX_MAIN        = "PaddleX/main.py"
@@ -100,6 +101,7 @@ def step3_train():
             "-c", CONFIG,
             "-o", "Global.mode=train",
             "-o", f"Global.dataset_dir={DATASET_DIR}",
+            "-o", f"Train.resume_path={RESUME_PATH}",
             "-o", f"Global.output={OUTPUT_DIR}",
         ],
         step="Step 3b | 模型训练",
