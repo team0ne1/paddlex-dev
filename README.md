@@ -32,7 +32,13 @@
    code /path/to/this/project
    ```
 
-2. VS Code 检测到 `.devcontainer/devcontainer.json` 后，右下角会弹出提示，点击 **"Reopen in Container"**；或手动按 `F1` 执行命令 **"Dev Containers: Reopen in Container"**。
+2. 在终端中复制配置模板：
+
+   ```bash
+   cp model_config_example.yaml model_config.yaml
+   ```
+
+3. VS Code 检测到 `.devcontainer/devcontainer.json` 后，右下角会弹出提示，点击 **"Reopen in Container"**；或手动按 `F1` 执行命令 **"Dev Containers: Reopen in Container"**。
 
 3. 等待 Docker 镜像构建完成（首次构建约需数分钟，镜像约 5 GB）。构建完成后，VS Code 会自动连接容器，并在容器内自动执行以下初始化命令：
    - 安装 PaddleX 及其 `PaddleOCR`、`PaddleClas` 套件
