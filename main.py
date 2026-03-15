@@ -12,6 +12,8 @@
 import os
 import subprocess
 import sys
+import hashlib
+from datetime import datetime
 
 # ─── 路径配置 ────────────────────────────────────────────────────────────────
 NEW_IMAGES_DIR      = "./new_images"
@@ -25,28 +27,53 @@ RESUME_PATH         = f"{OUTPUT_DIR}/latest/latest.pdparams"
 BEST_WEIGHT         = f"{OUTPUT_DIR}/best_model/best_model.pdparams"
 INFERENCE_DIR       = f"{OUTPUT_DIR}/best_model/inference"
 PADDLEX_MAIN        = "PaddleX/main.py"
+MAIN_LOG_FILE       = f"{OUTPUT_DIR}/main_pipeline.log"
+
+
+def log_print(msg: str):
+    """同时输出到控制台和日志文件"""
+    print(msg)
+    os.makedirs(os.path.dirname(MAIN_LOG_FILE), exist_ok=True)
+    with open(MAIN_LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(msg + "\n")
+
+
+def get_file_md5(filepath: str) -> str:
+    """计算文件的 MD5 值"""
+    if not os.path.isfile(filepath):
+        return ""
+    with open(filepath, 'rb') as f:
+        return hashlib.md5(f.read()).hexdigest()
 
 
 def run(cmd: list[str], step: str):
-    """运行子命令，失败时打印错误并退出"""
-    print(f"\n{'=' * 60}")
-    print(f"[{step}] 执行: {' '.join(cmd)}")
-    print("=" * 60)
-    result = subprocess.run(cmd)
-    if result.returncode != 0:
-        print(f"\n[错误] 步骤「{step}」失败，退出码 {result.returncode}")
-        sys.exit(result.returncode)
+    """运行子命令，同时将输出流写入控制台和日志文件，失败时打印错误并退出"""
+    log_print(f"\n{'=' * 60}")
+    log_print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [{step}] 执行: {' '.join(cmd)}")
+    log_print("=" * 60)
+    
+    os.makedirs(os.path.dirname(MAIN_LOG_FILE), exist_ok=True)
+    with open(MAIN_LOG_FILE, "a", encoding="utf-8") as log_f:
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        for line in process.stdout:
+            sys.stdout.write(line)
+            log_f.write(line)
+        process.wait()
+        
+    if process.returncode != 0:
+        log_print(f"\n[错误] 步骤「{step}」失败，退出码 {process.returncode}")
+        sys.exit(process.returncode)
 
 
 # ─── Step 1: 检查新增数据 ────────────────────────────────────────────────────
 def step1_check_new_images() -> list[str]:
-    print("\n" + "=" * 60)
-    print("[Step 1] 检查 new_images/ 目录")
-    print("=" * 60)
+    log_print("\n" + "=" * 60)
+    log_print("[Step 1] 检查 new_images/ 目录")
+    log_print("=" * 60)
 
     image_exts = {".jpg", ".jpeg", ".png", ".bmp"}
     if not os.path.isdir(NEW_IMAGES_DIR):
-        print(f"目录不存在: {NEW_IMAGES_DIR}，跳过增广步骤。")
+        log_print(f"目录不存在: {NEW_IMAGES_DIR}，跳过增广步骤。")
         return []
 
     new_files = [
@@ -55,11 +82,11 @@ def step1_check_new_images() -> list[str]:
     ]
 
     if new_files:
-        print(f"发现 {len(new_files)} 张新图片：")
+        log_print(f"发现 {len(new_files)} 张新图片：")
         for f in new_files:
-            print(f"  - {f}")
+            log_print(f"  - {f}")
     else:
-        print("未发现新图片，跳过增广步骤。")
+        log_print("未发现新图片，跳过增广步骤。")
 
     return new_files
 
@@ -94,24 +121,42 @@ def step3_train():
         ],
         step="Step 3a | 数据集检查",
     )
+    
     # 3b. 模型训练
-    run(
-        [
-            sys.executable, PADDLEX_MAIN,
-            "-c", CONFIG,
-            "-o", "Global.mode=train",
-            "-o", f"Global.dataset_dir={DATASET_DIR}",
-            "-o", f"Train.resume_path={RESUME_PATH}",
-            "-o", f"Global.output={OUTPUT_DIR}",
-        ],
-        step="Step 3b | 模型训练",
-    )
+    txt_hash = get_file_md5(TRAIN_TXT)
+    config_hash = get_file_md5(CONFIG)
+    combined_hash = f"{txt_hash}:{config_hash}"
+    hash_file = os.path.join(OUTPUT_DIR, ".train_hash")
+    old_hash = ""
+    if os.path.isfile(hash_file):
+        with open(hash_file, "r", encoding="utf-8") as f:
+            old_hash = f.read().strip()
+
+    train_cmd = [
+        sys.executable, PADDLEX_MAIN,
+        "-c", CONFIG,
+        "-o", "Global.mode=train",
+        "-o", f"Global.dataset_dir={DATASET_DIR}",
+        "-o", f"Global.output={OUTPUT_DIR}",
+    ]
+
+    if combined_hash == old_hash and combined_hash != ":" and os.path.isfile(RESUME_PATH):
+        log_print(f"\n[提示] 数据集与配置文件均未发生变化，将从 {RESUME_PATH} 恢复训练...")
+        train_cmd.append("-o")
+        train_cmd.append(f"Train.resume_path={RESUME_PATH}")
+    else:
+        log_print("\n[提示] 数据集或配置文件发生变化，或无历史权重，将从头开始训练...")
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        with open(hash_file, "w", encoding="utf-8") as f:
+            f.write(combined_hash)
+
+    run(train_cmd, step="Step 3b | 模型训练")
 
 
 # ─── Step 4: 导出 ────────────────────────────────────────────────────────────
 def step4_export():
     if not os.path.isfile(BEST_WEIGHT):
-        print(f"\n[Step 4] 未找到最优权重 {BEST_WEIGHT}，跳过导出。")
+        log_print(f"\n[Step 4] 未找到最优权重 {BEST_WEIGHT}，跳过导出。")
         return
     run(
         [
@@ -127,17 +172,19 @@ def step4_export():
 
 # ─── Step 5: 对比 ────────────────────────────────────────────────────────────
 def step5_compare():
-    print("\n" + "=" * 60)
-    print("[Step 5] 官方模型 vs 微调模型 效果对比")
-    print("=" * 60)
+    log_print("\n" + "=" * 60)
+    log_print("[Step 5] 官方模型 vs 微调模型 效果对比")
+    log_print("=" * 60)
     run(
-        [sys.executable, "compare.py", "--max", "50"],
+        [sys.executable, "compare.py", "--max", "100"],
         step="Step 5 | 预测对比",
     )
 
 
 # ─── 主流程 ──────────────────────────────────────────────────────────────────
 def main():
+    log_print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 启动 main.py 工作流...")
+    
     # Step 1
     new_files = step1_check_new_images()
 
@@ -145,7 +192,7 @@ def main():
     if new_files:
         step2_augment()
     else:
-        print("\n[Step 2] 无新数据，跳过增广。")
+        log_print("\n[Step 2] 无新数据，跳过增广。")
 
     # Step 3
     step3_train()
@@ -156,14 +203,14 @@ def main():
     # Step 5
     step5_compare()
 
-    print("\n" + "=" * 60)
-    print("全流程完成！")
-    print(f"  最优权重:      {BEST_WEIGHT}")
-    print(f"  Inference 模型: {INFERENCE_DIR}")
-    print(f"  对比结果:      {OUTPUT_DIR}/res_official.json")
+    log_print("\n" + "=" * 60)
+    log_print("全流程完成！")
+    log_print(f"  最优权重:      {BEST_WEIGHT}")
+    log_print(f"  Inference 模型: {INFERENCE_DIR}")
+    log_print(f"  对比结果:      {OUTPUT_DIR}/res_official.json")
     if os.path.isdir(INFERENCE_DIR):
-        print(f"                 {OUTPUT_DIR}/res_finetuned.json")
-    print("=" * 60)
+        log_print(f"                 {OUTPUT_DIR}/res_finetuned.json")
+    log_print("=" * 60)
 
 
 if __name__ == "__main__":
