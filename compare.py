@@ -61,8 +61,25 @@ def load_val_samples(val_txt: str,
 
 
 def predict_single(model, input_path: str) -> tuple[int | None, float | None]:
+    def _first_val(v):
+        """从 list/tuple/ndarray 中取第一个值；标量直接返回。"""
+        if v is None:
+            return None
+        try:
+            return v[0]
+        except Exception:
+            return v
+
     for res in model.predict(input_path, batch_size=1):
-        return res["label_ids"][0], res["scores"][0]
+        # PaddleX 版本差异：有的返回 label_ids，有的返回 class_ids
+        label_val = _first_val(res.get("label_ids"))
+        if label_val is None:
+            label_val = _first_val(res.get("class_ids"))
+        score_val = _first_val(res.get("scores"))
+
+        label = int(label_val) if label_val is not None else None
+        score = float(score_val) if score_val is not None else None
+        return label, score
     return None, None
 
 
@@ -104,7 +121,8 @@ def compare(samples: list[tuple[str, int]], has_gt: bool):
         total += 1
 
         off_label, off_score = predict_single(official_model, input_path)
-        off_str = f"{LABEL_MAP.get(off_label, off_label)} ({off_score:.3f})"
+        off_score_text = f"{off_score:.3f}" if off_score is not None else "N/A"
+        off_str = f"{LABEL_MAP.get(off_label, off_label)} ({off_score_text})"
         if has_gt and off_label == gt_label:
             off_correct += 1
 
@@ -115,7 +133,8 @@ def compare(samples: list[tuple[str, int]], has_gt: bool):
 
         if finetuned_model:
             ft_label, ft_score = predict_single(finetuned_model, input_path)
-            ft_str = f"{LABEL_MAP.get(ft_label, ft_label)} ({ft_score:.3f})"
+            ft_score_text = f"{ft_score:.3f}" if ft_score is not None else "N/A"
+            ft_str = f"{LABEL_MAP.get(ft_label, ft_label)} ({ft_score_text})"
             if has_gt and ft_label == gt_label:
                 ft_correct += 1
             row += f" {ft_str:^{col_w}}"
