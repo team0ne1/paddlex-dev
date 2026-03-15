@@ -9,7 +9,8 @@
 - [环境准备](#一环境准备)
 - [下载官方数据集](#二下载官方数据集)
 - [加入自有数据集](#三加入自有数据集)
-- [训练模型](#四训练模型)
+- [GPU 环境配置](#四gpu-环境配置)
+- [训练模型](#五训练模型)
 
 ---
 
@@ -115,7 +116,18 @@ python augment_rotation.py \
 
 ---
 
-## 四、训练模型
+## 四、 GPU 环境配置 (可选)
+
+本项目支持通过 Docker 容器调用宿主机 GPU 进行加速训练。
+
+1. **显卡驱动要求**：确保宿主机 NVIDIA 显卡驱动版本支持 CUDA 12.6 (建议驱动版本 ≥ 550.54.14)。
+2. **容器配置**：在 `.devcontainer/devcontainer.json` 中配置 `"runArgs": ["--gpus", "all"]` 以映射显卡。
+3. **安装依赖**：需在容器内运行 `python3 -m pip install paddlepaddle-gpu==3.0.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/`。
+4. **修改配置**：在 `model_config.yaml` 中将 `Global.device` 设置为 `gpu:0`。
+
+---
+
+## 五、训练模型
 
 数据准备完毕后，执行训练脚本：
 

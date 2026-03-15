@@ -53,7 +53,7 @@ wheels/
 # =========================
 # 忽略数据集和输出的预测结果
 data/
-datasets/
+dataset/
 output/
 inference/
 runs/
