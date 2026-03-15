@@ -60,7 +60,7 @@ runs/
 PaddleX/
 *.tar
 text_image_orientation.tar
-./model_config.yaml
+model_config.yaml
 
 # 忽略模型权重文件 (包含常规与 PaddlePaddle 专属格式)
 *.pth
