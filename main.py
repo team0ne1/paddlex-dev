@@ -9,7 +9,9 @@
   5. 与官方预训练模型进行预测效果对比
 """
 
+import argparse
 import os
+import shutil
 import subprocess
 import sys
 import hashlib
@@ -140,7 +142,8 @@ def step3_train():
         "-o", f"Global.output={OUTPUT_DIR}",
     ]
 
-    if combined_hash == old_hash and combined_hash != ":" and os.path.isfile(RESUME_PATH):
+    force_flag = not os.path.isdir(OUTPUT_DIR)  # output 已被清空则视为 force
+    if not force_flag and combined_hash == old_hash and combined_hash != ":" and os.path.isfile(RESUME_PATH):
         log_print(f"\n[提示] 数据集与配置文件均未发生变化，将从 {RESUME_PATH} 恢复训练...")
         train_cmd.append("-o")
         train_cmd.append(f"Train.resume_path={RESUME_PATH}")
@@ -158,6 +161,7 @@ def step4_export():
     if not os.path.isfile(BEST_WEIGHT):
         log_print(f"\n[Step 4] 未找到最优权重 {BEST_WEIGHT}，跳过导出。")
         return
+    # Export Inference
     run(
         [
             sys.executable, PADDLEX_MAIN,
@@ -166,7 +170,19 @@ def step4_export():
             "-o", f"Global.output={OUTPUT_DIR}",
             "-o", f"Export.weight_path={BEST_WEIGHT}",
         ],
-        step="Step 4 | 导出 Inference 模型",
+        step="Step 4a | 导出 Inference 模型",
+    )
+    # Export ONNX
+    onnx_dir = os.path.join(os.path.dirname(INFERENCE_DIR), "onnx")
+    run(
+        [
+            "paddlex",
+            "--paddle2onnx",
+            "--paddle_model_dir", INFERENCE_DIR,
+            "--onnx_model_dir", onnx_dir,
+            "--opset_version", "11"
+        ],
+        step="Step 4b | 导出 ONNX 模型",
     )
 
 
@@ -183,8 +199,20 @@ def step5_compare():
 
 # ─── 主流程 ──────────────────────────────────────────────────────────────────
 def main():
+    parser = argparse.ArgumentParser(description="全流程演示脚本")
+    parser.add_argument("-f", "--force", action="store_true",
+                        help="强制清空 output 目录，从头开始训练（不断点续训）")
+    args = parser.parse_args()
+
     log_print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 启动 main.py 工作流...")
-    
+
+    # -f: 清空 output 目录
+    if args.force:
+        if os.path.isdir(OUTPUT_DIR):
+            log_print(f"\n[--force] 清空输出目录: {OUTPUT_DIR}")
+            shutil.rmtree(OUTPUT_DIR)
+        log_print("[--force] 将从头开始训练，不使用断点续训。")
+
     # Step 1
     new_files = step1_check_new_images()
 
