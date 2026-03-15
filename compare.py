@@ -83,6 +83,32 @@ def predict_single(model, input_path: str) -> tuple[int | None, float | None]:
     return None, None
 
 
+def get_cmp_mark(
+    off_label: int | None,
+    off_score: float | None,
+    ft_label: int | None,
+    ft_score: float | None,
+    gt_label: int,
+) -> str:
+    """对比标记规则：++ / --* / + / - / = / **"""
+    off_ok = (off_label == gt_label)
+    ft_ok = (ft_label == gt_label)
+
+    if ft_ok and not off_ok:
+        return "++"
+    if off_ok and not ft_ok:
+        return "--*"
+    if off_ok and ft_ok:
+        if ft_score is None or off_score is None:
+            return "="
+        if ft_score > off_score:
+            return "+"
+        if ft_score < off_score:
+            return "-"
+        return "="
+    return "**"
+
+
 def compare(samples: list[tuple[str, int]], has_gt: bool):
     print("正在加载官方预训练模型...")
     official_model = create_model(model_name="PP-LCNet_x1_0_doc_ori")
@@ -101,7 +127,8 @@ def compare(samples: list[tuple[str, int]], has_gt: bool):
     name_w = 35
     col_w  = 18
     gt_w   = 8
-    total_cols = name_w + (gt_w if has_gt else 0) + col_w + (col_w if finetuned_model else 0)
+    cmp_w  = 8
+    total_cols = name_w + (gt_w if has_gt else 0) + col_w + (col_w if finetuned_model else 0) + (cmp_w if has_gt and finetuned_model else 0)
     sep = "=" * (total_cols + 4)
 
     print("\n" + sep)
@@ -111,6 +138,8 @@ def compare(samples: list[tuple[str, int]], has_gt: bool):
     header += f" {'官方模型':^{col_w}}"
     if finetuned_model:
         header += f" {'微调模型':^{col_w}}"
+    if has_gt and finetuned_model:
+        header += f" {'对比':^{cmp_w}}"
     print(header)
     print(sep)
 
@@ -138,13 +167,18 @@ def compare(samples: list[tuple[str, int]], has_gt: bool):
             if has_gt and ft_label == gt_label:
                 ft_correct += 1
             row += f" {ft_str:^{col_w}}"
-            if off_label != ft_label:
+            if has_gt:
+                cmp_mark = get_cmp_mark(off_label, off_score, ft_label, ft_score, gt_label)
+                row += f" {cmp_mark:^{cmp_w}}"
+            elif off_label != ft_label:
                 row += "  ← 结论不同"
 
         print(row)
 
     print(sep)
     print("格式：预测方向（置信度）")
+    if has_gt and finetuned_model:
+        print("对比列：++(微调对/官方错), --*(微调错需关注), +(都对且微调置信度更高), -(都对且更低), =(都对且置信度相同), **(都错)")
 
     if has_gt and total > 0:
         print(f"\n准确率汇总（共 {total} 张）：")
