@@ -9,6 +9,7 @@ import os
 import random
 import time
 from PIL import Image
+from PIL import ImageOps
 from pathlib import Path
 import argparse
 
@@ -82,7 +83,9 @@ def rotate_and_save_images(input_dir, output_dir, train_txt_path, val_txt_path,
 
     for idx, img_file in enumerate(image_files, 1):
         try:
-            img = Image.open(img_file)
+            with Image.open(img_file) as raw_img:
+                # 统一按“视觉上正向”的像素作为旋转基准，避免 EXIF 方向标签导致标注错位。
+                img = ImageOps.exif_transpose(raw_img).convert('RGB')
             original_name = img_file.stem
 
             # 按源图像决定整组旋转图归属，防止数据泄露
